@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thi Đấu Trắc Nghiệm Cá Nhân</title>
+
+<!-- Firebase SDK Compat -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<style>
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #0f172a, #1d4ed8);
+    min-height: 100vh;
+    color: #1e293b;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+.container {
+    width: min(650px, 100%);
+}
+.card {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    position: relative;
+}
+h1, h2 {
+    text-align: center;
+    color: #1e40af;
+    margin-top: 0;
+}
+.subtitle {
+    text-align: center;
+    color: #64748b;
+    margin-bottom: 25px;
+}
+input[type="text"], select {
+     width: 100%;
+     padding: 14px;
+     border: 2px solid #cbd5e1;
+     border-radius: 12px;
+     font-size: 16px;
+     outline: none;
+     margin-bottom: 15px;
+     background: white;
+}
+input[type="text"] {
+    width: 100%;
+    padding: 14px;
+    border: 2px solid #cbd5e1;
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+    margin-bottom: 15px;
+}
+input[type="text"]:focus {
+    border-color: #2563eb;
+}
+button {
+    width: 100%;
+    border: none;
+    padding: 14px;
+    border-radius: 12px;
+    background: #2563eb;
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+button:hover {
+    background: #1d4ed8;
+}
+.btn-secondary {
+    background: #059669;
+    margin-top: 10px;
+}
+.btn-secondary:hover { background: #047857; }
+.btn-reset { background: #dc2626; margin-top: 15px; }
+.btn-reset:hover { background: #b91c1c; }
+
+#quizPage, #resultPage { display: none; }
+
+/* Progress & Slide Header */
+.quiz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #eff6ff;
+    padding: 12px 18px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    color: #1e40af;
+}
+.question-title {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+.options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+.option-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 15px;
+}
+.option-item:hover {
+    background: #f8fafc;
+    border-color: #93c5fd;
+}
+.option-item input {
+    margin-right: 12px;
+    width: 18px;
+    height: 18px;
+}
+
+/* Custom Feedback Modal / Overlay */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
+.modal-box {
+    background: white;
+    border-radius: 18px;
+    padding: 25px;
+    max-width: 450px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.modal-title {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+.modal-title.correct { color: #16a34a; }
+.modal-title.wrong { color: #dc2626; }
+.modal-body {
+    font-size: 16px;
+    color: #334155;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+.correct-ans-highlight {
+    font-weight: bold;
+    color: #16a34a;
+    background: #f0fdf4;
+    padding: 6px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-top: 8px;
+}
+
+/* Leaderboard Styling */
+.rank-list {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 350px;
+    overflow-y: auto;
+}
+.rank-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+.rank-item.top1 {
+    background: #fef9c3;
+    border-color: #fde047;
+    font-weight: bold;
+}
+.score-badge {
+    background: #2563eb;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- PAGE 1: ĐĂNG NHẬP TÊN -->
+    <section id="startPage" class="card">
+        <h1>🎯 THI TRẮC NGHIỆM CÁ NHÂN</h1>
+        <p class="subtitle">Nhập tên của bạn để bắt đầu thử thách 15 câu hỏi</p>
+        
+        <label for="playerNameInput"><b>Họ và tên người chơi:</b></label>
+        <input type="text" id="playerNameInput" placeholder="Ví dụ: Nguyễn Văn A">
+
+        <label for="playerTeamInput"><b>Tiểu đội của bạn:</b></label>
+        <select id="playerTeamInput" style="width:100%;padding:14px;border:2px solid #cbd5e1;border-radius:12px;font-size:16px;margin-bottom:15px;background:white;">
+            <option value="">-- Chọn tiểu đội --</option>
+            <option value="Tiểu đội 1">Tiểu đội 1</option>
+            <option value="Tiểu đội 2">Tiểu đội 2</option>
+            <option value="Tiểu đội 3">Tiểu đội 3</option>
+            <option value="Tiểu đội 4">Tiểu đội 4</option>
+            <option value="Tiểu đội 5">Tiểu đội 5</option>
+            <option value="Tiểu đội 6">Tiểu đội 6</option>
+            <option value="Tiểu đội 7">Tiểu đội 7</option>
+            <option value="Tiểu đội 8">Tiểu đội 8</option>
+            <option value="Tiểu đội 9">Tiểu đội 9</option>
+            <option value="Tiểu đội 10">Tiểu đội 10</option>
+            <option value="Tiểu đội 11">Tiểu đội 11</option>
+        </select>
+        
+        <button onclick="startQuiz()">🚀 XÁC NHẬN & BẮT ĐẦU THI</button>
+        <button class="btn-secondary" onclick="showLeaderboardOnly()">🏆 XEM BẢNG XẾP HẠNG</button>
+    </section>
+
+    <!-- PAGE 2: SLIDE CÂU HỎI -->
+    <section id="quizPage" class="card">
+        <div class="quiz-header">
+            <span id="playerBadge"></span>
+            <span id="progressBadge">Câu 1 / 15</span>
+            <span id="timerBadge" aria-live="polite">⏱️ 15 giây</span>
+        </div>
+
+        <div id="questionTitle" class="question-title"></div>
+        <div id="optionsList" class="options-list"></div>
+
+        <div class="quiz-navigation" style="display:flex;gap:10px;margin-top:10px;">
+            <button onclick="submitAnswer()" style="flex:1;">XÁC NHẬN ĐÁP ÁN</button>
+        </div>
+    </section>
+
+    <!-- PAGE 3: BẢNG XẾP HẠNG CÁ NHÂN -->
+    <section id="resultPage" class="card">
+        <h1>🏆 BẢNG XẾP HẠNG</h1>
+        <p style="text-align:center" id="finalResultNotice"></p>
+        <div style="display:flex;gap:10px;margin:18px 0;">
+            <button id="teamRankTab" onclick="showRankTab('teams')" style="flex:1">🏅 Xếp hạng tiểu đội</button>
+            <button id="individualRankTab" onclick="showRankTab('individuals')" style="flex:1">👤 Xếp hạng tất cả cá nhân</button>
+        </div>
+        <h2 id="rankSectionTitle">🏅 Xếp hạng tiểu đội</h2>
+        <div id="leaderboardList" class="rank-list"></div>
+
+        <br>
+        <button onclick="goHome()">🏠 QUAY LẠI TRANG CHỦ</button>
+        <button class="btn-reset" onclick="resetLeaderboard()">🗑️ XÓA BẢNG XẾP HẠNG</button>
+    </section>
+
+</div>
+
+<!-- FEEDBACK MODAL (Bật lên sau khi chọn đáp án) -->
+<div id="feedbackModal" class="modal-overlay">
+    <div class="modal-box">
+        <div id="modalTitle" class="modal-title"></div>
+        <div id="modalBody" class="modal-body"></div>
+        <button onclick="nextQuestion()">OK / CÂU TIẾP THEO ➔</button>
+    </div>
+</div>
+
+<script>
+// =========================================================================
+// CẤU HÌNH FIREBASE MỚI NHẤT DỰA TRÊN ẢNH BẠN VỪA GỬI
+// =========================================================================
+const firebaseConfig = {
+    apiKey: "AIzaSyC4ddGfCTESvpUEYR5hxr5HyfXk5opt-yA",
+    authDomain: "trochoi-41b63.firebaseapp.com",
+    databaseURL: "https://trochoi-41b63-default-rtdb.firebaseio.com",
+    projectId: "trochoi-41b63",
+    storageBucket: "trochoi-41b63.firebasestorage.app",
+    messagingSenderId: "334869881759",
+    appId: "1:334869881759:web:f850a8aab4fb794b6013aa"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Mã quản trị tạm thời để hạn chế thao tác xóa trên giao diện.
+// Hãy đổi mã này trước khi sử dụng; bảo vệ thực sự cần Firebase Authentication + Database Rules.
+const ADMIN_PASSWORD = "23122008";
+
+// TỔNG CỘNG 15 CÂU HỎI TRẮC NGHIỆM
+const masterQuestions = [
+    {
+        q: "TTATXH là viết tắt cho từ gì?",
+        opts: [
+            "Trật tự an toàn xã hội",
+            "An ninh và trật tự xã hội",
+            "Trật tự an ninh xã hội",
+            "An ninh, trật tự quốc gia"
+        ],
+        ans: 0
+    },
+    {
+        q: "Lực lượng nào giữ vai trò nòng cốt trong giữ gìn trật tự an toàn xã hội?",
+        opts: [
+            "Công an nhân dân",
+            "Quân đội nhân dân",
+            "Dân quân tự vệ",
+            "Lực lượng bảo vệ dân phố"
+        ],
+        ans: 0
+    },
+    {
+        q: "Khu vực có tranh chấp chủ quyền biển, đảo là khu vực nào?",
+        opts: [
+            "Biển Đông",
+            "Biển Tây",
+            "Vịnh Thái Lan",
+            "Vịnh Bắc Bộ"
+        ],
+        ans: 0
+    },
+    {
+        q: "Ai làm chủ trong bảo đảm ANQG và trật tự an toàn xã hội?",
+        opts: [
+            "Nhân dân",
+            "Nhà nước",
+            "Lực lượng Công an nhân dân",
+            "Các cơ quan quản lý nhà nước"
+        ],
+        ans: 0
+    },
+    {
+        q: "Các loại tội phạm xâm phạm trật tự an toàn xã hội được nêu là?",
+        opts: [
+            "Ma túy, tội phạm kinh tế, tội phạm trật tự an toàn xã hội",
+            "Tội phạm ma túy, tội phạm hình sự, tội phạm công nghệ cao",
+            "Tội phạm kinh tế, tội phạm môi trường, tội phạm ma túy",
+            "Tội phạm hình sự, tội phạm kinh tế, tội phạm môi trường"
+        ],
+        ans: 0
+    },
+    {
+        q: "Sinh viên nói riêng và người dân nói chung cần nghiêm chỉnh chấp hành điều gì?",
+        opts: [
+            "Pháp luật",
+            "Nội quy, quy định của cơ quan, tổ chức",
+            "Các quy định về bảo đảm an ninh, trật tự",
+            "Pháp luật và các quy định của cơ quan, tổ chức"
+        ],
+        ans: 0
+    },
+    {
+        q: "An ninh quốc gia là:",
+        opts: [
+            "Sự ổn định, phát triển bền vững của chế độ xã hội chủ nghĩa và Nhà nước CHXHCN Việt Nam, sự bất khả xâm phạm độc lập, chủ quyền, thống nhất, toàn vẹn lãnh thổ của Tổ quốc.",
+            "Sự ổn định về chính trị, kinh tế, văn hóa và xã hội của đất nước, bảo đảm cuộc sống bình yên của nhân dân.",
+            "Sự ổn định của Nhà nước và xã hội, bảo đảm an toàn cho các cơ quan, tổ chức và công dân.",
+            "Sự ổn định của đất nước, bảo vệ chủ quyền quốc gia và duy trì môi trường hòa bình, an toàn."
+        ],
+        ans: 0
+    },
+    {
+        q: "Bảo vệ an ninh quốc gia là:",
+        opts: [
+            "Phòng ngừa, phát hiện, ngăn chặn, đấu tranh làm thất bại các hoạt động xâm phạm an ninh quốc gia",
+            "Phòng ngừa, phát hiện, ngăn chặn và xử lý các hành vi vi phạm pháp luật về trật tự an toàn xã hội",
+            "Phát hiện, điều tra, ngăn chặn và xử lý các loại tội phạm xâm phạm an ninh, trật tự",
+            "Chủ động phòng ngừa, phát hiện và xử lý các hành vi gây mất ổn định chính trị, xã hội"
+        ],
+        ans: 0
+    },
+    {
+        q: "Hoạt động xâm phạm an ninh quốc gia là:",
+        opts: [
+            "Những hành vi xâm phạm chế độ chính trị, chế độ kinh tế, nền văn hoá, an ninh, quốc phòng, đối ngoại, độc lập, chủ quyền, thống nhất, toàn vẹn lãnh thổ.",
+            "Những hành vi xâm phạm trật tự an toàn xã hội, tài sản, tính mạng và quyền lợi hợp pháp của công dân.",
+            "Những hành vi gây ảnh hưởng đến hoạt động của cơ quan nhà nước, tổ chức và đời sống bình thường của nhân dân.",
+            "Những hành vi vi phạm pháp luật gây ảnh hưởng đến an ninh, trật tự và an toàn trong xã hội."
+        ],
+        ans: 0
+    },
+    {
+        q: "Nguy cơ đe dọa an ninh quốc gia là:",
+        opts: [
+            "Tình trạng đe dọa từ bên trong hoặc bên ngoài có khả năng gây nguy hại đến an ninh quốc gia.",
+            "Tình trạng bất ổn về chính trị, kinh tế hoặc xã hội có khả năng ảnh hưởng đến sự ổn định của đất nước.",
+            "Những yếu tố từ bên trong hoặc bên ngoài có khả năng gây ảnh hưởng đến đời sống và sự phát triển của quốc gia.",
+            "Những vấn đề phát sinh trong xã hội có khả năng tác động đến an ninh, trật tự và an toàn của đất nước."
+        ],
+        ans: 0
+    },
+    {
+        q: "Trách nhiệm, nghĩa vụ bảo vệ an ninh quốc gia?",
+        opts: [
+            "Là quyền và nghĩa vụ của công dân. Mọi cơ quan, tổ chức, cá nhân đều có trách nhiệm tham gia.",
+            "Là trách nhiệm chủ yếu của các cơ quan chuyên trách về bảo vệ an ninh quốc gia.",
+            "Là trách nhiệm của các lực lượng vũ trang và các cơ quan nhà nước trong thực hiện nhiệm vụ bảo vệ an ninh.",
+            "Là nghĩa vụ của công dân và các tổ chức xã hội trong việc phối hợp với lực lượng chuyên trách."
+        ],
+        ans: 0
+    },
+    {
+        q: "Bảo vệ an ninh văn hóa, tư tưởng ở ta là bảo vệ gì?",
+        opts: [
+            "Bảo vệ chủ nghĩa Mác - Lênin, tư tưởng Hồ Chí Minh, bảo vệ bản sắc văn hóa dân tộc.",
+            "Bảo vệ nền văn hóa dân tộc, giữ gìn các giá trị truyền thống và bản sắc văn hóa Việt Nam.",
+            "Bảo vệ nền tảng tư tưởng, văn hóa dân tộc và những giá trị phù hợp với quá trình phát triển đất nước.",
+            "Bảo vệ các giá trị văn hóa, tư tưởng truyền thống và xây dựng môi trường văn hóa lành mạnh."
+        ],
+        ans: 0
+    },
+    {
+        q: "Bảo vệ an ninh biên giới ở ta là bảo vệ gì?",
+        opts: [
+            "Bảo vệ chủ quyền, toàn vẹn lãnh thổ, biên giới quốc gia, an ninh trật tự khu vực biên giới.",
+            "Bảo vệ chủ quyền lãnh thổ, hệ thống đường biên giới và các công trình, cơ sở quan trọng tại khu vực biên giới.",
+            "Bảo vệ đường biên, cột mốc, cửa khẩu và bảo đảm an toàn cho hoạt động tại khu vực biên giới.",
+            "Bảo vệ chủ quyền quốc gia, kiểm soát hoạt động qua biên giới và giữ gìn an ninh tại các khu vực trọng yếu."
+        ],
+        ans: 0
+    },
+    {
+        q: "Mục đích của công tác bảo vệ an ninh chính trị nội bộ là bảo vệ gì?",
+        opts: [
+            "Bảo vệ sự trong sạch, vững mạnh của tổ chức Đảng, Nhà nước; bảo vệ cán bộ, đảng viên.",
+            "Bảo vệ bí mật đời tư.",
+            "Bảo vệ tài sản công.",
+            "Bảo vệ trụ sở làm việc."
+        ],
+        ans: 0
+    },
+    {
+        q: "Bảo vệ an ninh chính trị, kinh tế, văn hóa tư tưởng; lực lượng nào xác định là lực lượng nòng cốt?",
+        opts: [
+            "Lực lượng Công an nhân dân.",
+            "Quân đội nhân dân.",
+            "Dân quân tự vệ.",
+            "Thanh niên xung kích."
+        ],
+        ans: 0
+    }
+
+];
+
+let currentQuestions = [];
+let currentIndex = 0;
+let score = 0;
+let playerName = "";
+let playerTeam = "";
+let rankTab = "teams";
+let userAnswers = [];
+let questionTimer = null;
+let secondsRemaining = 15;
+let questionLocked = false;
+
+// Hàm tráo đổi mảng ngẫu nhiên (Fisher-Yates)
+function shuffleArray(array) {
+    let arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+// Khởi tạo lượt chơi: Xáo trộn câu hỏi và xáo trộn các lựa chọn đáp án
+function startQuiz() {
+    playerName = document.getElementById("playerNameInput").value.trim();
+    playerTeam = document.getElementById("playerTeamInput").value;
+    if (!playerName) {
+        alert("Vui lòng nhập họ và tên trước khi bắt đầu!");
+        return;
+    }
+    if (!playerTeam) {
+        alert("Vui lòng chọn tiểu đội trước khi bắt đầu!");
+        return;
+    }
+
+    // Giới hạn một lượt trên trình duyệt này cho mỗi tên + tiểu đội.
+    // Ban tổ chức có thể xác thực bằng mật khẩu khi quay về trang chủ.
+    const attemptKey = getAttemptKey(playerName, playerTeam);
+    if (!window.organizerRestartAuthorized && localStorage.getItem(attemptKey)) {
+        alert("Bạn đã tham gia bài thi trên thiết bị/trình duyệt này. Mỗi người chỉ được thi một lần.");
+        return;
+    }
+    localStorage.setItem(attemptKey, "started");
+    window.organizerRestartAuthorized = false;
+
+    score = 0;
+    currentIndex = 0;
+    userAnswers = new Array(masterQuestions.length).fill(null);
+
+    // 1. Tráo thứ tự câu hỏi
+    const shuffledQ = shuffleArray(masterQuestions);
+
+    // 2. Tráo thứ tự A, B, C, D trong từng câu nhưng giữ cờ isCorrect
+    currentQuestions = shuffledQ.map(qObj => {
+        let optionsMapped = qObj.opts.map((optText, idx) => ({
+            text: optText,
+            isCorrect: idx === qObj.ans
+        }));
+        let shuffledOpts = shuffleArray(optionsMapped);
+        let correctText = qObj.opts[qObj.ans];
+
+        return {
+            q: qObj.q,
+            opts: shuffledOpts,
+            correctText: correctText
+        };
+    });
+
+    document.getElementById("playerBadge").textContent = "👤 " + playerName + " · " + playerTeam;
+    document.getElementById("startPage").style.display = "none";
+    document.getElementById("quizPage").style.display = "block";
+
+    renderSlide();
+}
+
+// Hiển thị Slide câu hỏi hiện tại
+function renderSlide() {
+    clearInterval(questionTimer);
+    secondsRemaining = 15;
+    questionLocked = false;
+    const qData = currentQuestions[currentIndex];
+    document.getElementById("progressBadge").textContent = `Câu ${currentIndex + 1} / ${currentQuestions.length}`;
+    updateTimerDisplay();
+    questionTimer = setInterval(() => {
+        secondsRemaining--;
+        updateTimerDisplay();
+        if (secondsRemaining <= 0) {
+            clearInterval(questionTimer);
+            questionLocked = true;
+            autoAdvanceQuestion();
+        }
+    }, 1000);
+    document.getElementById("questionTitle").textContent = `Câu ${currentIndex + 1}: ${qData.q}`;
+
+    const optsContainer = document.getElementById("optionsList");
+    optsContainer.innerHTML = qData.opts.map((opt, i) => `
+        <label class="option-item">
+            <input type="radio" name="quizOption" value="${i}" ${userAnswers[currentIndex] === i ? "checked" : ""}>
+            <b>${String.fromCharCode(65 + i)}.</b>&nbsp; ${escapeHtml(opt.text)}
+        </label>
+    `).join("");
+
+}
+
+function updateTimerDisplay() {
+    const badge = document.getElementById("timerBadge");
+    if (badge) {
+        badge.textContent = `⏱️ ${Math.max(0, secondsRemaining)} giây`;
+        badge.style.color = secondsRemaining <= 5 ? "#dc2626" : "#1e40af";
+    }
+}
+
+function autoAdvanceQuestion() {
+    document.getElementById("feedbackModal").style.display = "none";
+    currentIndex++;
+    if (currentIndex < currentQuestions.length) renderSlide();
+    else finishQuiz();
+}
+
+// Xử lý khi bấm nút "XÁC NHẬN ĐÁP ÁN"
+function submitAnswer() {
+    if (questionLocked) return;
+    clearInterval(questionTimer);
+    questionLocked = true;
+    const selected = document.querySelector('input[name="quizOption"]:checked');
+    if (!selected) {
+        questionLocked = false;
+        questionTimer = setInterval(() => {
+            secondsRemaining--;
+            updateTimerDisplay();
+            if (secondsRemaining <= 0) {
+                clearInterval(questionTimer);
+                questionLocked = true;
+                autoAdvanceQuestion();
+            }
+        }, 1000);
+        alert("Vui lòng chọn 1 đáp án!");
+        return;
+    }
+
+    const selectedIdx = Number(selected.value);
+    const currentQ = currentQuestions[currentIndex];
+
+    // Lưu đáp án của câu hiện tại; câu đã qua không thể mở lại.
+    userAnswers[currentIndex] = selectedIdx;
+
+    // Tính lại điểm từ toàn bộ các câu đã trả lời để đổi đáp án
+    // tránh cộng điểm trùng lặp.
+    score = userAnswers.reduce((total, answer, index) => {
+        if (answer === null || !currentQuestions[index]) return total;
+        return total + (currentQuestions[index].opts[answer]?.isCorrect ? 1 : 0);
+    }, 0);
+
+    const isCorrect = currentQ.opts[selectedIdx].isCorrect;
+
+    const modal = document.getElementById("feedbackModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalBody = document.getElementById("modalBody");
+
+    if (isCorrect) {
+        modalTitle.textContent = "🎉 CHÍNH XÁC!";
+        modalTitle.className = "modal-title correct";
+        modalBody.innerHTML = "Chúc mừng bạn đã chọn đáp án đúng và nhận được <b>+1 điểm</b>!";
+    } else {
+        modalTitle.textContent = "❌ RẤT TIẾC, BẠN ĐÃ TRẢ LỜI SAI!";
+        modalTitle.className = "modal-title wrong";
+        modalBody.innerHTML = `
+            Đáp án đúng của câu này là:<br>
+            <div class="correct-ans-highlight">${escapeHtml(currentQ.correctText)}</div>
+        `;
+    }
+
+    modal.style.display = "flex";
+}
+
+// Khóa chức năng quay lại: người chơi không thể mở lại câu trước.
+function previousQuestion() { return; }
+
+// Chuyển sang câu tiếp theo hoặc hoàn thành bài thi
+function nextQuestion() {
+    clearInterval(questionTimer);
+    questionLocked = false;
+    document.getElementById("feedbackModal").style.display = "none";
+    currentIndex++;
+
+    if (currentIndex < currentQuestions.length) {
+        renderSlide();
+    } else {
+        finishQuiz();
+    }
+}
+
+// Nộp điểm lên Firebase & Hiển thị Bảng xếp hạng
+function finishQuiz() {
+    clearInterval(questionTimer);
+    questionLocked = true;
+    if (playerName && playerTeam) {
+        localStorage.setItem(getAttemptKey(playerName, playerTeam), "completed");
+    }
+    document.getElementById("quizPage").style.display = "none";
+    document.getElementById("resultPage").style.display = "block";
+
+    document.getElementById("finalResultNotice").innerHTML = 
+        `Bạn <b>${escapeHtml(playerName)}</b> đã hoàn thành bài thi với kết quả: <b>${score}/${currentQuestions.length} câu đúng</b>`;
+
+    // Lưu kết quả cá nhân lên Firebase Realtime Database
+    const sanitizedKey = playerName.replace(/[.#$\[\]]/g, "_") + "_" + Date.now().toString().slice(-4);
+    db.ref("players/" + sanitizedKey).set({
+        name: playerName,
+        team: playerTeam,
+        score: score,
+        timestamp: Date.now()
+    });
+
+    listenLeaderboard();
+}
+
+function showLeaderboardOnly() {
+    document.getElementById("startPage").style.display = "none";
+    document.getElementById("resultPage").style.display = "block";
+    document.getElementById("finalResultNotice").textContent = "Bảng xếp hạng cá nhân trực tuyến";
+    rankTab = "teams";
+    showRankTab(rankTab);
+    listenLeaderboard();
+}
+
+function showRankTab(tab) {
+    rankTab = tab;
+    document.getElementById("teamRankTab").style.opacity = tab === "teams" ? "1" : "0.65";
+    document.getElementById("individualRankTab").style.opacity = tab === "individuals" ? "1" : "0.65";
+    document.getElementById("rankSectionTitle").textContent = tab === "teams"
+        ? "🏅 Xếp hạng tiểu đội" : "👤 Xếp hạng tất cả cá nhân";
+    if (window.latestPlayers) renderLeaderboard(window.latestPlayers);
+}
+
+function renderLeaderboard(players) {
+    const listContainer = document.getElementById("leaderboardList");
+    // Chỉ tính và hiển thị tiểu đội đã có ít nhất một lượt thi được lưu.
+    // Thành viên trả lời đúng 0 câu vẫn được tính là đã tham gia.
+    const totals = {};
+    players.forEach(p => {
+        const team = p.team || "Chưa phân tiểu đội";
+        if (!totals[team]) totals[team] = { points: 0, participants: 0 };
+        totals[team].points += Number(p.score || 0);
+        totals[team].participants += 1;
+    });
+    const teams = Object.entries(totals)
+        .filter(([team, data]) => data.participants > 0)
+        .sort((a,b) => b[1].points - a[1].points || a[0].localeCompare(b[0], 'vi'));
+    if (rankTab === "teams") {
+        if (!teams.length) {
+            listContainer.innerHTML = "<p style='text-align:center;color:#888;'>Chưa có tiểu đội nào tham gia thi.</p>";
+            return;
+        }
+        listContainer.innerHTML = teams.slice(0, 10).map(([team, data], idx) => `
+            <div class="rank-item ${idx === 0 ? 'top1' : ''}">
+                <div><b>Hạng ${idx + 1}: ${escapeHtml(team)}</b></div>
+                <span class="score-badge">${data.points} điểm</span>
+            </div>`).join("");
+    } else {
+        const individuals = [...players].sort((a,b) => Number(b.score || 0) - Number(a.score || 0)
+            || Number(a.timestamp || 0) - Number(b.timestamp || 0));
+        if (!individuals.length) {
+            listContainer.innerHTML = "<p style='text-align:center;color:#888;'>Chưa có lượt thi nào</p>";
+            return;
+        }
+        listContainer.innerHTML = individuals.slice(0, 10).map((p, idx) => `
+            <div class="rank-item ${idx === 0 ? 'top1' : ''}">
+                <div><b>Hạng ${idx + 1}: ${escapeHtml(p.name || 'Người chơi')}</b><br><small>${escapeHtml(p.team || 'Chưa phân tiểu đội')}</small></div>
+                <span class="score-badge">${Number(p.score || 0)}/${masterQuestions.length} câu đúng</span>
+            </div>`).join("");
+    }
+}
+
+function listenLeaderboard() {
+    db.ref("players").on("value", snapshot => {
+        const data = snapshot.val() || {};
+        window.latestPlayers = Object.values(data);
+        renderLeaderboard(window.latestPlayers);
+    });
+}
+
+function getAttemptKey(name, team) {
+    const normalizedName = String(name).trim().toLocaleLowerCase("vi").replace(/\\s+/g, " ");
+    return "quiz_attempt_" + encodeURIComponent(team + "|" + normalizedName);
+}
+
+function goHome() {
+    const enteredPassword = prompt("Chỉ ban tổ chức mới được quay về trang chủ để làm lại. Nhập mật khẩu quản trị:");
+    if (enteredPassword === null) return;
+    if (enteredPassword !== ADMIN_PASSWORD) {
+        alert("Mật khẩu không đúng. Bạn không thể làm lại bài thi.");
+        return;
+    }
+
+    // Xác thực ban tổ chức: cho phép khởi tạo lượt mới trên trình duyệt hiện tại.
+    // Không xóa kết quả cũ trên bảng xếp hạng.
+    window.organizerRestartAuthorized = true;
+    document.getElementById("resultPage").style.display = "none";
+    document.getElementById("startPage").style.display = "block";
+}
+
+function resetLeaderboard() {
+    const enteredPassword = prompt("Chỉ quản trị viên mới được xóa bảng xếp hạng. Nhập mật khẩu quản trị:");
+    if (enteredPassword === null) return;
+    if (enteredPassword !== ADMIN_PASSWORD) {
+        alert("Mật khẩu không đúng. Không thể xóa bảng xếp hạng.");
+        return;
+    }
+    if (confirm("Bạn chắc chắn muốn xóa toàn bộ bảng xếp hạng trên hệ thống? Thao tác này không thể hoàn tác.")) {
+        db.ref("players").remove()
+          .then(() => alert("Đã xóa bảng xếp hạng thành công."))
+          .catch(error => alert("Không thể xóa bảng xếp hạng: " + error.message));
+    }
+}
+
+function escapeHtml(str) {
+    const d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+}
+</script>
+</body>
+</html>
